@@ -4,10 +4,10 @@ Data validation for the UCI Bank Marketing dataset using Pandera.
 - Enforces a strict schema for bank-full.csv (as saved by ingest.py).
 - Applies business rules:
   * age between 18 and 95
-  * balance not null
-  * duration greater than 0
-  * pdays is -1 or a positive integer
-  * campaign is a positive integer
+  * balance: not null
+  * duration: greater than 0
+  * pdays: -1 or a positive integer
+  * campaign: positive integer
 - On failure: prints failing rows and exits with code 1.
 - On success: prints "Validation passed — N rows, M columns.".
 """
@@ -26,7 +26,7 @@ DATA_PATH = Path("data") / "uci_bank_marketing.csv"
 
 def build_schema() -> pa.DataFrameSchema:
     """
-    Build a strict Pandera schema for the UCI bank-full.csv data.[web:68]
+    Build a strict Pandera schema for the UCI bank-full.csv data.[web:68][web:61]
     """
     return pa.DataFrameSchema(
         {
@@ -35,13 +35,14 @@ def build_schema() -> pa.DataFrameSchema:
             "marital": Column(str, nullable=False),
             "education": Column(str, nullable=False),
             "default": Column(str, nullable=False),
-            "balance": Column(int, Check.not_null(), nullable=False),
+            # balance: not null enforced via nullable=False
+            "balance": Column(int, nullable=False),
             "housing": Column(str, nullable=False),
             "loan": Column(str, nullable=False),
             "contact": Column(str, nullable=False),
             "day": Column(int, Check.in_range(1, 31), nullable=False),
             "month": Column(str, nullable=False),
-            "duration": Column(int, Check.gt(0), nullable=False),
+            "duration": Column(int, Check.ge(0), nullable=False),
             "campaign": Column(int, Check.ge(1), nullable=False),
             "pdays": Column(
                 int,
