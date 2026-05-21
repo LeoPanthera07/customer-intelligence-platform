@@ -1,0 +1,40 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Env files and secrets
+.env
+*.env
+
+# Data (no raw data in Git)
+data/*.csv
+data/*.json
+data/*.parquet
+data/*.faiss
+data/faiss.index
+
+# MLflow artifacts
+mlruns/
+
+# Model artifacts
+models/
+
+# Monitoring outputs
+monitoring/*.html
+monitoring/*.json
+
+# OS / editor noise
+.DS_Store
+.idea/
+.vscode/
+
+# Docker
+*.log
