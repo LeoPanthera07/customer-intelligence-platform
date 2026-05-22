@@ -2,6 +2,7 @@ import os
 from typing import Optional
 
 import mlflow
+from mlflow.tracking import MlflowClient
 
 
 def setup_mlflow() -> None:
@@ -10,6 +11,8 @@ def setup_mlflow() -> None:
 
     - Uses MLFLOW_TRACKING_URI if set, otherwise defaults to local ./mlruns.
     - Uses MLFLOW_EXPERIMENT_NAME and MLFLOW_ARTIFACT_ROOT from env with sensible defaults.
+    - Creates the experiment with artifact_location on first run via MlflowClient;
+      on subsequent runs it simply activates the existing experiment.
     """
     tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "./mlruns")
     experiment_name = os.getenv("MLFLOW_EXPERIMENT_NAME", "customer-intel-experiments")
@@ -17,11 +20,15 @@ def setup_mlflow() -> None:
 
     mlflow.set_tracking_uri(tracking_uri)
 
-    # Ensure experiment exists with the configured artifact location
-    mlflow.set_experiment(
-        experiment_name=experiment_name,
-        artifact_location=artifact_root,
-    )
+    client = MlflowClient()
+    exp = client.get_experiment_by_name(experiment_name)
+    if exp is None:
+        client.create_experiment(
+            name=experiment_name,
+            artifact_location=artifact_root,
+        )
+
+    mlflow.set_experiment(experiment_name)
 
 
 def get_active_run_id(fallback_env_var: str = "MODEL_RUN_ID") -> Optional[str]:
