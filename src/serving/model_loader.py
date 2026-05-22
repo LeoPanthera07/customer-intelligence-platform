@@ -1,46 +1,69 @@
-from __future__ import annotations
+"""
+Model Loader — retrieves the latest promoted model run and its preprocessors
+from the central MLflow tracking store.
+"""
 
-import os
-from datetime import datetime, timezone
+import sys
+import pickle
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Any, Dict, Tuple
 
-import joblib
 import mlflow
+import mlflow.sklearn
+import mlflow.xgboost
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+
+from src.mlflow_config import configure_mlflow, get_latest_run_id
+
+# ── Configuration ────────────────────────────────────────────────
+configure_mlflow()
 
 
-def _load_local_fallback() -> Any | None:
-    for p in [
-        Path("models/improved_model.joblib"),
-        Path("models/baseline_model.joblib"),
-        Path("models/model.joblib"),
-    ]:
-        if p.exists():
-            return joblib.load(p)
-    return None
+def load_promoted_model() -> Tuple[Any, Dict[str, LabelEncoder], StandardScaler, str]:
+    """Retrieve the latest promoted model and its preprocessors from MLflow.
 
-
-def load_model(run_id: str | None = None) -> Tuple[Any, str, str]:
-    model = _load_local_fallback()
-    if model is None:
-        raise RuntimeError("No local fallback model found in models/*.joblib")
-    loaded_at = datetime.now(timezone.utc).isoformat()
-    return model, run_id or os.getenv("MODEL_RUN_ID") or "local-fallback", loaded_at
-
-
-def load_scaler(run_id: str) -> Any:
-    for p in [
-        Path("models/improved_scaler.joblib"),
-        Path("models/baseline_scaler.joblib"),
-        Path("models/scaler.joblib"),
-    ]:
-        if p.exists():
-            return joblib.load(p)
-    return None
-
-
-def warm_up(model: Any, scaler: Any) -> None:
-    import numpy as np
-    n_features = getattr(model, "n_features_in_", 18)
-    dummy = np.zeros((1, n_features), dtype=float)
-    _ = model.predict_proba(dummy)
+    Returns
+    -------
+    model : The loaded scikit-learn or XGBoost model.
+    encoders : Dict of fitted LabelEncoders.
+    scaler : Fitted StandardScaler.
+    run_id : The MLflow run ID of the model.
+    """
+    # Find the latest run with pr_auc logged (our promotion metric)
+    run_id = get_latest_run_id(metric_key="pr_auc")
+    if not run_id:
+        raise RuntimeError("ERROR: No promoted runs found in MLflow. Please run training first.")
+        
+    client = mlflow.tracking.MlflowClient()
+    run = client.get_run(run_id)
+    model_type = run.data.tags.get("model_type", "sklearn")
+    
+    # 1. Load the model natively
+    try:
+        if model_type == "xgboost":
+            model = mlflow.xgboost.load_model(f"runs:/{run_id}/model")
+            # Repair deserialized XGBClassifier missing attributes
+            if not hasattr(model, "n_classes_"):
+                if hasattr(model, "classes_"):
+                    model.n_classes_ = len(model.classes_)
+                else:
+                    model.n_classes_ = 2
+        else:
+            model = mlflow.sklearn.load_model(f"runs:/{run_id}/model")
+    except Exception as exc:
+        raise RuntimeError(f"Failed to load native model from runs:/{run_id}/model: {exc}")
+        
+    # 2. Download and load the preprocessors artifact
+    try:
+        local_dir = client.download_artifacts(run_id, "preprocessor")
+        preproc_path = Path(local_dir) / "preprocessor.pkl"
+        
+        with open(preproc_path, "rb") as f:
+            preprocessors = pickle.load(f)
+            
+        encoders = preprocessors["encoders"]
+        scaler = preprocessors["scaler"]
+    except Exception as exc:
+        raise RuntimeError(f"Failed to load preprocessors from MLflow artifacts for run {run_id}: {exc}")
+        
+    return model, encoders, scaler, run_id

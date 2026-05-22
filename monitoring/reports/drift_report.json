@@ -1,0 +1,1171 @@
+{
+  "metrics": [
+    {
+      "metric": "DatasetDriftMetric",
+      "result": {
+        "drift_share": 0.5,
+        "number_of_columns": 21,
+        "number_of_drifted_columns": 17,
+        "share_of_drifted_columns": 0.8095238095238095,
+        "dataset_drift": true
+      }
+    },
+    {
+      "metric": "DataDriftTable",
+      "result": {
+        "number_of_columns": 21,
+        "number_of_drifted_columns": 17,
+        "share_of_drifted_columns": 0.8095238095238095,
+        "dataset_drift": true,
+        "drift_by_columns": {
+          "age": {
+            "column_name": "age",
+            "column_type": "num",
+            "stattest_name": "Wasserstein distance (normed)",
+            "stattest_threshold": 0.1,
+            "drift_score": 0.8811387266208676,
+            "drift_detected": true,
+            "current": {
+              "small_distribution": {
+                "x": [
+                  23.0,
+                  31.4,
+                  39.8,
+                  48.2,
+                  56.6,
+                  65.0,
+                  73.4,
+                  81.80000000000001,
+                  90.2,
+                  98.60000000000001,
+                  107.0
+                ],
+                "y": [
+                  0.0033412413231778105,
+                  0.025718309077539924,
+                  0.04144179765720017,
+                  0.02189148943057849,
+                  0.01584488316060619,
+                  0.00719118374746227,
+                  0.0018671642688346572,
+                  0.001237068586782097,
+                  0.000421990686145294,
+                  9.249110929211939e-05
+                ]
+              }
+            },
+            "reference": {
+              "small_distribution": {
+                "x": [
+                  19.0,
+                  23.2,
+                  27.4,
+                  31.6,
+                  35.8,
+                  40.0,
+                  44.2,
+                  48.400000000000006,
+                  52.6,
+                  56.800000000000004,
+                  61.0
+                ],
+                "y": [
+                  0.00200012023844208,
+                  0.01574661135698331,
+                  0.032475940750195366,
+                  0.03841849452221409,
+                  0.03696175955086315,
+                  0.03664960205700225,
+                  0.025585353107932484,
+                  0.02124983235986443,
+                  0.016844943279827215,
+                  0.0121625808719137
+                ]
+              }
+            }
+          },
+          "campaign": {
+            "column_name": "campaign",
+            "column_type": "num",
+            "stattest_name": "Wasserstein distance (normed)",
+            "stattest_threshold": 0.1,
+            "drift_score": 0.5162647024241914,
+            "drift_detected": true,
+            "current": {
+              "small_distribution": {
+                "x": [
+                  3.0,
+                  5.6,
+                  8.2,
+                  10.8,
+                  13.4,
+                  16.0,
+                  18.6,
+                  21.2,
+                  23.8,
+                  26.400000000000002,
+                  29.0
+                ],
+                "y": [
+                  0.3247958703431172,
+                  0.04424365573243888,
+                  0.008236155414945349,
+                  0.0048557832378362635,
+                  0.0012512979882116527,
+                  0.0006910153069228524,
+                  0.0003735217875258667,
+                  5.602826812887993e-05,
+                  9.338044688146654e-05,
+                  1.8676089376293335e-05
+                ]
+              }
+            },
+            "reference": {
+              "small_distribution": {
+                "x": [
+                  1.0,
+                  6.5,
+                  12.0,
+                  17.5,
+                  23.0,
+                  28.5,
+                  34.0,
+                  39.5,
+                  45.0,
+                  50.5,
+                  56.0
+                ],
+                "y": [
+                  0.16793947045476618,
+                  0.00894346985441479,
+                  0.002913469942701758,
+                  0.0010329575251397142,
+                  0.0005473792013560879,
+                  0.00028251829747410985,
+                  8.828696796065933e-05,
+                  6.180087757246153e-05,
+                  0.0,
+                  8.828696796065933e-06
+                ]
+              }
+            }
+          },
+          "cons.conf.idx": {
+            "column_name": "cons.conf.idx",
+            "column_type": "num",
+            "stattest_name": "Wasserstein distance (normed)",
+            "stattest_threshold": 0.1,
+            "drift_score": 1.087334870539511,
+            "drift_detected": true,
+            "current": {
+              "small_distribution": {
+                "x": [
+                  -50.8,
+                  -48.41,
+                  -46.019999999999996,
+                  -43.629999999999995,
+                  -41.239999999999995,
+                  -38.849999999999994,
+                  -36.46,
+                  -34.07,
+                  -31.68,
+                  -29.29,
+                  -26.9
+                ],
+                "y": [
+                  0.012474689991763451,
+                  0.16765658275575243,
+                  0.00020317084677139171,
+                  0.07346657819253524,
+                  0.031166407894731487,
+                  0.010889957386946628,
+                  0.07803792224489155,
+                  0.007110979636998711,
+                  0.028322016039932004,
+                  0.00908173685068121
+                ]
+              }
+            },
+            "reference": {
+              "small_distribution": {
+                "x": [
+                  -42.7,
+                  -42.040000000000006,
+                  -41.38,
+                  -40.72,
+                  -40.06,
+                  -39.400000000000006,
+                  -38.74,
+                  -38.08,
+                  -37.42,
+                  -36.760000000000005,
+                  -36.1
+                ],
+                "y": [
+                  0.49183198401417555,
+                  0.32180599821660144,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.7015135329207349
+                ]
+              }
+            }
+          },
+          "cons.price.idx": {
+            "column_name": "cons.price.idx",
+            "column_type": "num",
+            "stattest_name": "Wasserstein distance (normed)",
+            "stattest_threshold": 0.1,
+            "drift_score": 3.3003171117679564,
+            "drift_detected": true,
+            "current": {
+              "small_distribution": {
+                "x": [
+                  92.201,
+                  92.4576,
+                  92.71419999999999,
+                  92.9708,
+                  93.22739999999999,
+                  93.484,
+                  93.7406,
+                  93.99719999999999,
+                  94.2538,
+                  94.51039999999999,
+                  94.767
+                ],
+                "y": [
+                  0.28082549980315075,
+                  0.13378950698169714,
+                  1.2869907170897763,
+                  1.1494164998682155,
+                  0.6939266224920173,
+                  0.0,
+                  0.08572368693452448,
+                  0.20361741090848395,
+                  0.0,
+                  0.06282618998291513
+                ]
+              }
+            },
+            "reference": {
+              "small_distribution": {
+                "x": [
+                  93.444,
+                  93.5461,
+                  93.6482,
+                  93.75030000000001,
+                  93.8524,
+                  93.9545,
+                  94.0566,
+                  94.15870000000001,
+                  94.2608,
+                  94.3629,
+                  94.465
+                ],
+                "y": [
+                  0.8427471006313859,
+                  0.0,
+                  0.0,
+                  0.0,
+                  3.1793252639507985,
+                  3.6920122698648634,
+                  0.0,
+                  0.0,
+                  0.0,
+                  2.0802346603618336
+                ]
+              }
+            }
+          },
+          "duration": {
+            "column_name": "duration",
+            "column_type": "num",
+            "stattest_name": "Wasserstein distance (normed)",
+            "stattest_threshold": 0.1,
+            "drift_score": 0.2747694356154092,
+            "drift_detected": true,
+            "current": {
+              "small_distribution": {
+                "x": [
+                  0.0,
+                  639.34,
+                  1278.68,
+                  1918.02,
+                  2557.36,
+                  3196.7000000000003,
+                  3836.04,
+                  4475.38,
+                  5114.72,
+                  5754.06,
+                  6393.400000000001
+                ],
+                "y": [
+                  0.0013756811991573847,
+                  0.00015357077152852822,
+                  2.658247776210924e-05,
+                  5.772195171200862e-06,
+                  1.5949486657265542e-06,
+                  3.0379974585267713e-07,
+                  3.037997458526769e-07,
+                  1.5189987292633846e-07,
+                  7.594993646316923e-08,
+                  7.594993646316923e-08
+                ]
+              }
+            },
+            "reference": {
+              "small_distribution": {
+                "x": [
+                  0.0,
+                  364.3,
+                  728.6,
+                  1092.9,
+                  1457.2,
+                  1821.5,
+                  2185.8,
+                  2550.1,
+                  2914.4,
+                  3278.7000000000003,
+                  3643.0
+                ],
+                "y": [
+                  0.0021835696130176685,
+                  0.00040293803809989085,
+                  0.00010529971885508227,
+                  3.7054837774320106e-05,
+                  9.996808752064776e-06,
+                  3.4655603673824534e-06,
+                  9.330354835260464e-07,
+                  7.997447001651815e-07,
+                  3.9987235008259074e-07,
+                  5.33163133443455e-07
+                ]
+              }
+            }
+          },
+          "emp.var.rate": {
+            "column_name": "emp.var.rate",
+            "column_type": "num",
+            "stattest_name": "Wasserstein distance (normed)",
+            "stattest_threshold": 0.1,
+            "drift_score": 16.57683447805017,
+            "drift_detected": true,
+            "current": {
+              "small_distribution": {
+                "x": [
+                  -3.4,
+                  -2.92,
+                  -2.44,
+                  -1.96,
+                  -1.48,
+                  -1.0,
+                  -0.52,
+                  -0.040000000000000036,
+                  0.43999999999999995,
+                  0.9200000000000004,
+                  1.4
+                ],
+                "y": [
+                  0.12574455342980156,
+                  0.16823265676086888,
+                  0.0,
+                  1.0072715353986599,
+                  0.06423796575054223,
+                  0.0,
+                  0.3735918228610275,
+                  0.0,
+                  0.0,
+                  0.34425479913243373
+                ]
+              }
+            },
+            "reference": {
+              "small_distribution": {
+                "x": [
+                  1.1,
+                  1.1300000000000001,
+                  1.1600000000000001,
+                  1.19,
+                  1.22,
+                  1.25,
+                  1.28,
+                  1.31,
+                  1.3399999999999999,
+                  1.3699999999999999,
+                  1.4
+                ],
+                "y": [
+                  12.565148425107624,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  20.768184908225678
+                ]
+              }
+            }
+          },
+          "euribor3m": {
+            "column_name": "euribor3m",
+            "column_type": "num",
+            "stattest_name": "Wasserstein distance (normed)",
+            "stattest_threshold": 0.1,
+            "drift_score": 50.34665892437491,
+            "drift_detected": true,
+            "current": {
+              "small_distribution": {
+                "x": [
+                  0.634,
+                  1.0751,
+                  1.5162,
+                  1.9572999999999996,
+                  2.3983999999999996,
+                  2.8394999999999997,
+                  3.2805999999999993,
+                  3.7216999999999993,
+                  4.1628,
+                  4.603899999999999,
+                  5.045
+                ],
+                "y": [
+                  0.46697421208119316,
+                  0.9891002582624987,
+                  0.029832628824611844,
+                  0.0,
+                  0.0,
+                  0.00011008350119782968,
+                  0.0007705845083848071,
+                  0.3247463285335969,
+                  0.07144419227739146,
+                  0.384081335679227
+                ]
+              }
+            },
+            "reference": {
+              "small_distribution": {
+                "x": [
+                  4.855,
+                  4.8665,
+                  4.878,
+                  4.8895,
+                  4.901,
+                  4.9125,
+                  4.924,
+                  4.9355,
+                  4.947,
+                  4.9585,
+                  4.97
+                ],
+                "y": [
+                  38.34379789807974,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  5.666487917544655,
+                  42.94623592350722
+                ]
+              }
+            }
+          },
+          "nr.employed": {
+            "column_name": "nr.employed",
+            "column_type": "num",
+            "stattest_name": "Wasserstein distance (normed)",
+            "stattest_threshold": 0.1,
+            "drift_score": 5.2369654147120315,
+            "drift_detected": true,
+            "current": {
+              "small_distribution": {
+                "x": [
+                  4963.6,
+                  4990.05,
+                  5016.5,
+                  5042.950000000001,
+                  5069.400000000001,
+                  5095.85,
+                  5122.3,
+                  5148.75,
+                  5175.200000000001,
+                  5201.650000000001,
+                  5228.1
+                ],
+                "y": [
+                  0.0011657551440552166,
+                  0.0026123930236072023,
+                  0.0022819427465521017,
+                  0.0,
+                  0.0030529933930138983,
+                  0.0156670148021531,
+                  0.0,
+                  0.0,
+                  0.006779738184245536,
+                  0.006247346071212445
+                ]
+              }
+            },
+            "reference": {
+              "small_distribution": {
+                "x": [
+                  5191.0,
+                  5194.71,
+                  5198.42,
+                  5202.13,
+                  5205.84,
+                  5209.55,
+                  5213.26,
+                  5216.97,
+                  5220.68,
+                  5224.39,
+                  5228.1
+                ],
+                "y": [
+                  0.10160497378793139,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.16793680518780724
+                ]
+              }
+            }
+          },
+          "pdays": {
+            "column_name": "pdays",
+            "column_type": "num",
+            "stattest_name": "Wasserstein distance (normed)",
+            "stattest_threshold": 0.1,
+            "drift_score": 73049.09196853454,
+            "drift_detected": true,
+            "current": {
+              "small_distribution": {
+                "x": [
+                  0.0,
+                  99.9,
+                  199.8,
+                  299.70000000000005,
+                  399.6,
+                  499.5,
+                  599.4000000000001,
+                  699.3000000000001,
+                  799.2,
+                  899.1,
+                  999.0
+                ],
+                "y": [
+                  0.0007363875480802741,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.009273622461929738
+                ]
+              }
+            },
+            "reference": {
+              "small_distribution": {
+                "x": [
+                  998.5,
+                  998.6,
+                  998.7,
+                  998.8,
+                  998.9,
+                  999.0,
+                  999.1,
+                  999.2,
+                  999.3,
+                  999.4,
+                  999.5
+                ],
+                "y": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  9.999999999997726,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            }
+          },
+          "previous": {
+            "column_name": "previous",
+            "column_type": "num",
+            "stattest_name": "Wasserstein distance (normed)",
+            "stattest_threshold": 0.1,
+            "drift_score": 345.9259978634552,
+            "drift_detected": true,
+            "current": {
+              "small_distribution": {
+                "x": [
+                  0.0,
+                  0.7,
+                  1.4,
+                  2.0999999999999996,
+                  2.8,
+                  3.5,
+                  4.199999999999999,
+                  4.8999999999999995,
+                  5.6,
+                  6.3,
+                  7.0
+                ],
+                "y": [
+                  1.0383745612453004,
+                  0.3163889621110171,
+                  0.05230372230469348,
+                  0.0,
+                  0.014983559705323323,
+                  0.004855783237836268,
+                  0.0,
+                  0.0012486299754436102,
+                  0.0003468416598454473,
+                  6.936833196908946e-05
+                ]
+              }
+            },
+            "reference": {
+              "small_distribution": {
+                "x": [
+                  -0.5,
+                  -0.4,
+                  -0.3,
+                  -0.19999999999999996,
+                  -0.09999999999999998,
+                  0.0,
+                  0.10000000000000009,
+                  0.20000000000000007,
+                  0.30000000000000004,
+                  0.4,
+                  0.5
+                ],
+                "y": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  9.999999999999991,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            }
+          },
+          "contact": {
+            "column_name": "contact",
+            "column_type": "cat",
+            "stattest_name": "Jensen-Shannon distance",
+            "stattest_threshold": 0.1,
+            "drift_score": 0.41935266943266847,
+            "drift_detected": true,
+            "current": {
+              "small_distribution": {
+                "x": [
+                  "cellular",
+                  "telephone"
+                ],
+                "y": [
+                  18702,
+                  1892
+                ]
+              }
+            },
+            "reference": {
+              "small_distribution": {
+                "x": [
+                  "cellular",
+                  "telephone"
+                ],
+                "y": [
+                  7442,
+                  13152
+                ]
+              }
+            }
+          },
+          "day_of_week": {
+            "column_name": "day_of_week",
+            "column_type": "cat",
+            "stattest_name": "Jensen-Shannon distance",
+            "stattest_threshold": 0.1,
+            "drift_score": 0.028766444923758693,
+            "drift_detected": false,
+            "current": {
+              "small_distribution": {
+                "x": [
+                  "fri",
+                  "mon",
+                  "thu",
+                  "tue",
+                  "wed"
+                ],
+                "y": [
+                  3940,
+                  4219,
+                  4607,
+                  3821,
+                  4007
+                ]
+              }
+            },
+            "reference": {
+              "small_distribution": {
+                "x": [
+                  "fri",
+                  "mon",
+                  "thu",
+                  "tue",
+                  "wed"
+                ],
+                "y": [
+                  3887,
+                  4295,
+                  4016,
+                  4269,
+                  4127
+                ]
+              }
+            }
+          },
+          "default": {
+            "column_name": "default",
+            "column_type": "cat",
+            "stattest_name": "Jensen-Shannon distance",
+            "stattest_threshold": 0.1,
+            "drift_score": 0.14411285253661596,
+            "drift_detected": true,
+            "current": {
+              "small_distribution": {
+                "x": [
+                  "no",
+                  "unknown",
+                  "yes"
+                ],
+                "y": [
+                  17978,
+                  2613,
+                  3
+                ]
+              }
+            },
+            "reference": {
+              "small_distribution": {
+                "x": [
+                  "no",
+                  "unknown",
+                  "yes"
+                ],
+                "y": [
+                  14610,
+                  5984,
+                  0
+                ]
+              }
+            }
+          },
+          "education": {
+            "column_name": "education",
+            "column_type": "cat",
+            "stattest_name": "Jensen-Shannon distance",
+            "stattest_threshold": 0.1,
+            "drift_score": 0.10013657972941148,
+            "drift_detected": true,
+            "current": {
+              "small_distribution": {
+                "x": [
+                  "basic.4y",
+                  "basic.6y",
+                  "basic.9y",
+                  "high.school",
+                  "illiterate",
+                  "professional.course",
+                  "university.degree",
+                  "unknown"
+                ],
+                "y": [
+                  1750,
+                  910,
+                  2600,
+                  4568,
+                  11,
+                  2732,
+                  7254,
+                  769
+                ]
+              }
+            },
+            "reference": {
+              "small_distribution": {
+                "x": [
+                  "basic.4y",
+                  "basic.6y",
+                  "basic.9y",
+                  "high.school",
+                  "illiterate",
+                  "professional.course",
+                  "university.degree",
+                  "unknown"
+                ],
+                "y": [
+                  2426,
+                  1382,
+                  3445,
+                  4947,
+                  7,
+                  2511,
+                  4914,
+                  962
+                ]
+              }
+            }
+          },
+          "housing": {
+            "column_name": "housing",
+            "column_type": "cat",
+            "stattest_name": "Jensen-Shannon distance",
+            "stattest_threshold": 0.1,
+            "drift_score": 0.061443118666579574,
+            "drift_detected": false,
+            "current": {
+              "small_distribution": {
+                "x": [
+                  "no",
+                  "unknown",
+                  "yes"
+                ],
+                "y": [
+                  8458,
+                  455,
+                  11681
+                ]
+              }
+            },
+            "reference": {
+              "small_distribution": {
+                "x": [
+                  "no",
+                  "unknown",
+                  "yes"
+                ],
+                "y": [
+                  10164,
+                  535,
+                  9895
+                ]
+              }
+            }
+          },
+          "job": {
+            "column_name": "job",
+            "column_type": "cat",
+            "stattest_name": "Jensen-Shannon distance",
+            "stattest_threshold": 0.1,
+            "drift_score": 0.11931157955238461,
+            "drift_detected": true,
+            "current": {
+              "small_distribution": {
+                "x": [
+                  "admin.",
+                  "blue-collar",
+                  "entrepreneur",
+                  "housemaid",
+                  "management",
+                  "retired",
+                  "self-employed",
+                  "services",
+                  "student",
+                  "technician",
+                  "unemployed",
+                  "unknown"
+                ],
+                "y": [
+                  5701,
+                  3682,
+                  683,
+                  424,
+                  1626,
+                  1104,
+                  745,
+                  1724,
+                  703,
+                  3535,
+                  548,
+                  119
+                ]
+              }
+            },
+            "reference": {
+              "small_distribution": {
+                "x": [
+                  "admin.",
+                  "blue-collar",
+                  "entrepreneur",
+                  "housemaid",
+                  "management",
+                  "retired",
+                  "self-employed",
+                  "services",
+                  "student",
+                  "technician",
+                  "unemployed",
+                  "unknown"
+                ],
+                "y": [
+                  4721,
+                  5572,
+                  773,
+                  636,
+                  1298,
+                  616,
+                  676,
+                  2245,
+                  172,
+                  3208,
+                  466,
+                  211
+                ]
+              }
+            }
+          },
+          "loan": {
+            "column_name": "loan",
+            "column_type": "cat",
+            "stattest_name": "Jensen-Shannon distance",
+            "stattest_threshold": 0.1,
+            "drift_score": 0.009257463940663535,
+            "drift_detected": false,
+            "current": {
+              "small_distribution": {
+                "x": [
+                  "no",
+                  "unknown",
+                  "yes"
+                ],
+                "y": [
+                  16985,
+                  455,
+                  3154
+                ]
+              }
+            },
+            "reference": {
+              "small_distribution": {
+                "x": [
+                  "no",
+                  "unknown",
+                  "yes"
+                ],
+                "y": [
+                  16965,
+                  535,
+                  3094
+                ]
+              }
+            }
+          },
+          "marital": {
+            "column_name": "marital",
+            "column_type": "cat",
+            "stattest_name": "Jensen-Shannon distance",
+            "stattest_threshold": 0.1,
+            "drift_score": 0.052843136446661845,
+            "drift_detected": false,
+            "current": {
+              "small_distribution": {
+                "x": [
+                  "divorced",
+                  "married",
+                  "single",
+                  "unknown"
+                ],
+                "y": [
+                  2206,
+                  11872,
+                  6469,
+                  47
+                ]
+              }
+            },
+            "reference": {
+              "small_distribution": {
+                "x": [
+                  "divorced",
+                  "married",
+                  "single",
+                  "unknown"
+                ],
+                "y": [
+                  2406,
+                  13056,
+                  5099,
+                  33
+                ]
+              }
+            }
+          },
+          "month": {
+            "column_name": "month",
+            "column_type": "cat",
+            "stattest_name": "Jensen-Shannon distance",
+            "stattest_threshold": 0.1,
+            "drift_score": 0.520144560371348,
+            "drift_detected": true,
+            "current": {
+              "small_distribution": {
+                "x": [
+                  "apr",
+                  "aug",
+                  "dec",
+                  "jul",
+                  "jun",
+                  "mar",
+                  "may",
+                  "nov",
+                  "oct",
+                  "sep"
+                ],
+                "y": [
+                  2632,
+                  4406,
+                  182,
+                  489,
+                  944,
+                  546,
+                  6006,
+                  4101,
+                  718,
+                  570
+                ]
+              }
+            },
+            "reference": {
+              "small_distribution": {
+                "x": [
+                  "apr",
+                  "aug",
+                  "dec",
+                  "jul",
+                  "jun",
+                  "mar",
+                  "may",
+                  "nov",
+                  "oct",
+                  "sep"
+                ],
+                "y": [
+                  0,
+                  1772,
+                  0,
+                  6685,
+                  4374,
+                  0,
+                  7763,
+                  0,
+                  0,
+                  0
+                ]
+              }
+            }
+          },
+          "poutcome": {
+            "column_name": "poutcome",
+            "column_type": "cat",
+            "stattest_name": "Jensen-Shannon distance",
+            "stattest_threshold": 0.1,
+            "drift_score": 0.32482055631732726,
+            "drift_detected": true,
+            "current": {
+              "small_distribution": {
+                "x": [
+                  "failure",
+                  "nonexistent",
+                  "success"
+                ],
+                "y": [
+                  4252,
+                  14969,
+                  1373
+                ]
+              }
+            },
+            "reference": {
+              "small_distribution": {
+                "x": [
+                  "failure",
+                  "nonexistent",
+                  "success"
+                ],
+                "y": [
+                  0,
+                  20594,
+                  0
+                ]
+              }
+            }
+          },
+          "y": {
+            "column_name": "y",
+            "column_type": "cat",
+            "stattest_name": "Jensen-Shannon distance",
+            "stattest_threshold": 0.1,
+            "drift_score": 0.1516711469614118,
+            "drift_detected": true,
+            "current": {
+              "small_distribution": {
+                "x": [
+                  "no",
+                  "yes"
+                ],
+                "y": [
+                  16917,
+                  3677
+                ]
+              }
+            },
+            "reference": {
+              "small_distribution": {
+                "x": [
+                  "no",
+                  "yes"
+                ],
+                "y": [
+                  19631,
+                  963
+                ]
+              }
+            }
+          }
+        },
+        "current_fi": null,
+        "reference_fi": null
+      }
+    }
+  ]
+}

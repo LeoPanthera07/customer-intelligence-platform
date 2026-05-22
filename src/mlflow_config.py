@@ -1,46 +1,62 @@
+"""
+MLflow configuration — centralises experiment name, tracking URI,
+and a helper to retrieve the active run ID.
+
+Every training / evaluation script imports from here so that
+the experiment name and artifact root are never hard-coded
+in multiple places.
+"""
+
 import os
-from typing import Optional
 
 import mlflow
-from mlflow.tracking import MlflowClient
+from dotenv import load_dotenv
+
+# Load .env so local development picks up MLFLOW_TRACKING_URI etc.
+load_dotenv()
+
+# ── Configuration ────────────────────────────────────────────────
+EXPERIMENT_NAME: str = os.getenv(
+    "MLFLOW_EXPERIMENT_NAME", "customer-intel-experiments"
+)
+TRACKING_URI: str = os.getenv(
+    "MLFLOW_TRACKING_URI", "sqlite:///mlflow.db"
+)
+ARTIFACT_ROOT: str = os.getenv("MLFLOW_ARTIFACT_ROOT", "./mlruns")
 
 
-def setup_mlflow() -> None:
+def configure_mlflow() -> str:
+    """Set the MLflow tracking URI and experiment.
+
+    Returns the experiment ID so callers can reference it in logs.
     """
-    Configure MLflow tracking and experiment.
-
-    - Uses MLFLOW_TRACKING_URI if set, otherwise defaults to local ./mlruns.
-    - Uses MLFLOW_EXPERIMENT_NAME and MLFLOW_ARTIFACT_ROOT from env with sensible defaults.
-    - Creates the experiment with artifact_location on first run via MlflowClient;
-      on subsequent runs it simply activates the existing experiment.
-    """
-    tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "./mlruns")
-    experiment_name = os.getenv("MLFLOW_EXPERIMENT_NAME", "customer-intel-experiments")
-    artifact_root = os.getenv("MLFLOW_ARTIFACT_ROOT", "./mlruns")
-
-    mlflow.set_tracking_uri(tracking_uri)
-
-    client = MlflowClient()
-    exp = client.get_experiment_by_name(experiment_name)
-    if exp is None:
-        client.create_experiment(
-            name=experiment_name,
-            artifact_location=artifact_root,
-        )
-
-    mlflow.set_experiment(experiment_name)
+    mlflow.set_tracking_uri(TRACKING_URI)
+    experiment = mlflow.set_experiment(EXPERIMENT_NAME)
+    return experiment.experiment_id
 
 
-def get_active_run_id(fallback_env_var: str = "MODEL_RUN_ID") -> Optional[str]:
-    """
-    Return the currently active MLflow run_id if a run is active.
-
-    If no run is active, fall back to the environment variable given by
-    `fallback_env_var` (default: MODEL_RUN_ID). Returns None if neither is set.
-    """
+def get_active_run_id() -> str | None:
+    """Return the run_id of the currently active MLflow run, or None."""
     active_run = mlflow.active_run()
-    if active_run is not None:
-        return active_run.info.run_id
+    if active_run is None:
+        return None
+    return active_run.info.run_id
 
-    env_run_id = os.getenv(fallback_env_var)
-    return env_run_id or None
+
+def get_latest_run_id(metric_key: str = "pr_auc") -> str | None:
+    """Return the run_id of the latest finished run that logged *metric_key*.
+
+    Useful for model_loader.py when MODEL_RUN_ID is not set — it falls
+    back to the most recent successful training run.
+    """
+    mlflow.set_tracking_uri(TRACKING_URI)
+    experiment = mlflow.set_experiment(EXPERIMENT_NAME)
+    runs = mlflow.search_runs(
+        experiment_ids=[experiment.experiment_id],
+        filter_string=f"metrics.{metric_key} > 0",
+        order_by=["start_time DESC"],
+        max_results=1,
+    )
+    if runs.empty:
+        return None
+    return str(runs.iloc[0]["run_id"])

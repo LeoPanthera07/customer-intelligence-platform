@@ -1,170 +1,180 @@
 """
-Feature engineering utilities for the campaign conversion model.
+Feature Engineering — reusable, tested feature transformation functions
+for the UCI Bank Marketing dataset.
 
-Functions:
-- encode_categoricals(df) -> df
-- bin_age(df) -> df with age_group
-- compute_contact_features(df) -> df with contact features
-- scale_numerics(df, scaler=None) -> (df_scaled, scaler)
-- get_feature_names() -> ordered list of feature columns
-
-CRITICAL: scale_numerics accepts an optional pre-fitted scaler so train
-and serve use identical transformations.
+CRITICAL: scale_numerics() accepts a pre-fitted scaler so that training
+and serving use the exact same transformation. At train time, pass
+scaler=None to fit a new scaler. At serve time, pass the saved scaler.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import List, Optional, Sequence, Tuple
+from typing import Optional
 
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 
-# Categorical columns in the UCI bank-full dataset we will encode.
-CATEGORICAL_COLS: Sequence[str] = [
-    "job",
-    "marital",
-    "education",
-    "default",
-    "housing",
-    "loan",
-    "contact",
-    "month",
-    "poutcome",
-]
-
-# Base numeric columns (excluding the target y)
-NUMERIC_COLS: Sequence[str] = [
-    "age",
-    "balance",
-    "duration",
-    "campaign",
-    "pdays",
-    "previous",
-]
-
-# Engineered columns we add
-ENGINEERED_COLS: Sequence[str] = [
-    "age_group",
-    "days_since_contact",
-    "contact_intensity",
+# ── Categorical encoding ────────────────────────────────────────
+# Columns that need label encoding.
+CATEGORICAL_COLS: list[str] = [
+    "job", "marital", "education", "default",
+    "housing", "loan", "contact", "month",
+    "day_of_week", "poutcome",
 ]
 
 
-@dataclass
-class FeatureConfig:
-    categorical_cols: Sequence[str] = tuple(CATEGORICAL_COLS)
-    numeric_cols: Sequence[str] = tuple(NUMERIC_COLS)
-    engineered_cols: Sequence[str] = tuple(ENGINEERED_COLS)
+def encode_categoricals(
+    df: pd.DataFrame,
+    encoders: Optional[dict[str, LabelEncoder]] = None,
+) -> tuple[pd.DataFrame, dict[str, LabelEncoder]]:
+    """Label-encode all categorical columns.
 
+    Parameters
+    ----------
+    df : DataFrame with raw categorical strings.
+    encoders : Optional dict mapping column name → fitted LabelEncoder.
+               If None, new encoders are fitted (training mode).
+               If provided, they are used to transform (serving mode).
 
-FEATURE_CONFIG = FeatureConfig()
-
-
-def encode_categoricals(df: pd.DataFrame, config: FeatureConfig = FEATURE_CONFIG) -> pd.DataFrame:
-    """
-    Label-encode categorical columns using pandas category codes.
-
-    This is deterministic as long as the underlying string values remain
-    consistent between train and serve. We keep the same column names,
-    replacing string values by integer codes.
+    Returns
+    -------
+    df : DataFrame with encoded integers replacing the original strings.
+    encoders : The dict of fitted LabelEncoders (save this for serving).
     """
     df = df.copy()
-    for col in config.categorical_cols:
-        if col in df.columns:
-            df[col] = df[col].astype("category").cat.codes.astype("int32")
-    return df
+    if encoders is None:
+        encoders = {}
+        for col in CATEGORICAL_COLS:
+            if col in df.columns:
+                le = LabelEncoder()
+                df[col] = le.fit_transform(df[col].astype(str))
+                encoders[col] = le
+    else:
+        for col in CATEGORICAL_COLS:
+            if col in df.columns and col in encoders:
+                le = encoders[col]
+                # Handle unseen labels gracefully at serve time.
+                known = set(le.classes_)
+                df[col] = df[col].astype(str).apply(
+                    lambda x, _k=known, _le=le: (
+                        _le.transform([x])[0] if x in _k else -1
+                    )
+                )
+    return df, encoders
 
 
-def bin_age(df: pd.DataFrame, config: FeatureConfig = FEATURE_CONFIG) -> pd.DataFrame:
-    """
-    Create an age_group column with values: "young", "mid", "senior",
-    then encode it as an ordered integer.
-
-    - young : age < 30
-    - mid   : 30 <= age <= 55
-    - senior: age > 55
-    """
+# ── Age binning ──────────────────────────────────────────────────
+def bin_age(df: pd.DataFrame) -> pd.DataFrame:
+    """Create an ``age_group`` column: young (≤30), mid (31–55), senior (>55)."""
     df = df.copy()
-    if "age" not in df.columns:
-        raise KeyError("age column is required to compute age_group.")
-
-    bins = [-np.inf, 29, 55, np.inf]
+    conditions = [
+        df["age"] <= 30,
+        (df["age"] > 30) & (df["age"] <= 55),
+        df["age"] > 55,
+    ]
     labels = ["young", "mid", "senior"]
-    df["age_group_str"] = pd.cut(df["age"], bins=bins, labels=labels, right=True)
-    df["age_group"] = df["age_group_str"].astype("category").cat.codes.astype("int32")
-    df.drop(columns=["age_group_str"], inplace=True)
+    df["age_group"] = np.select(conditions, labels, default="mid")
+    # Convert to numeric ordinal for modelling.
+    age_map = {"young": 0, "mid": 1, "senior": 2}
+    df["age_group"] = df["age_group"].map(age_map).astype(int)
     return df
 
 
-def compute_contact_features(
-    df: pd.DataFrame, config: FeatureConfig = FEATURE_CONFIG
-) -> pd.DataFrame:
-    """
-    Compute simple contact-related features:
+# ── Contact features ────────────────────────────────────────────
+def compute_contact_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Derive two contact-related features.
 
-    - days_since_contact: pdays with -1 mapped to a high value (e.g. 999),
-      indicating no previous contact.[web:68]
-    - contact_intensity: campaign / max(duration_minutes, 1)
+    ``days_since_contact``
+        If pdays == 999 (never contacted), set to -1 to distinguish
+        from genuinely low values. Otherwise keep pdays as-is.
+
+    ``contact_intensity``
+        campaign × (previous + 1) — captures total contact effort.
     """
     df = df.copy()
-
-    if "pdays" not in df.columns or "duration" not in df.columns or "campaign" not in df.columns:
-        missing = [c for c in ["pdays", "duration", "campaign"] if c not in df.columns]
-        raise KeyError(f"Missing required columns for contact features: {missing}")
-
-    # days_since_contact: -1 means no previous contact; send to a sentinel value.
-    df["days_since_contact"] = df["pdays"].where(df["pdays"] >= 0, 999)
-
-    # duration is in seconds; convert to minutes and guard against zero.
-    duration_minutes = df["duration"].clip(lower=1) / 60.0
-    df["contact_intensity"] = df["campaign"] / duration_minutes
-
+    df["days_since_contact"] = df["pdays"].apply(
+        lambda x: -1 if x == 999 else x
+    )
+    df["contact_intensity"] = df["campaign"] * (df["previous"] + 1)
     return df
+
+
+# ── Numeric scaling ──────────────────────────────────────────────
+NUMERIC_COLS: list[str] = [
+    "age", "duration", "campaign", "pdays", "previous",
+    "emp.var.rate", "cons.price.idx", "cons.conf.idx",
+    "euribor3m", "nr.employed",
+    # Engineered features
+    "age_group", "days_since_contact", "contact_intensity",
+]
 
 
 def scale_numerics(
     df: pd.DataFrame,
     scaler: Optional[StandardScaler] = None,
-    config: FeatureConfig = FEATURE_CONFIG,
-) -> Tuple[pd.DataFrame, StandardScaler]:
-    """
-    Scale numeric columns using StandardScaler.
+) -> tuple[pd.DataFrame, StandardScaler]:
+    """Fit or apply a StandardScaler to all numeric feature columns.
 
-    If `scaler` is None, a new scaler is fitted and returned along with the
-    transformed DataFrame. If a pre-fitted scaler is provided, it is used
-    to transform the DataFrame without refitting. This is critical so that
-    train and serve use the exact same transformation.
+    Parameters
+    ----------
+    df : DataFrame after encoding + feature engineering.
+    scaler : If None, a new scaler is fitted (training).
+             If provided, the scaler is used to transform (serving).
+
+    Returns
+    -------
+    df : DataFrame with scaled numeric columns.
+    scaler : The fitted StandardScaler (save this for serving).
     """
     df = df.copy()
-    numeric_cols: List[str] = [
-        c for c in config.numeric_cols + config.engineered_cols if c in df.columns
-    ]
-    if not numeric_cols:
-        raise ValueError("No numeric columns found to scale.")
+    # Only scale columns that actually exist in the dataframe.
+    cols_to_scale = [c for c in NUMERIC_COLS if c in df.columns]
 
-    values = df[numeric_cols].to_numpy(dtype=float)
     if scaler is None:
         scaler = StandardScaler()
-        scaled_values = scaler.fit_transform(values)
+        df[cols_to_scale] = scaler.fit_transform(df[cols_to_scale])
     else:
-        scaled_values = scaler.transform(values)
+        df[cols_to_scale] = scaler.transform(df[cols_to_scale])
 
-    df[numeric_cols] = scaled_values
     return df, scaler
 
 
-def get_feature_names(config: FeatureConfig = FEATURE_CONFIG) -> List[str]:
-    """
-    Return the ordered list of feature columns used by the model.
+# ── Feature name list ────────────────────────────────────────────
+def get_feature_names() -> list[str]:
+    """Return the ordered list of final feature column names.
 
-    This includes:
-    - Encoded categorical columns
-    - Base numeric columns
-    - Engineered feature columns
+    This is the canonical feature order used during training and
+    serving — any mismatch will cause prediction errors.
     """
-    return list(config.categorical_cols) + list(config.numeric_cols) + list(
-        config.engineered_cols
-    )
+    return CATEGORICAL_COLS + NUMERIC_COLS
+
+
+# ── Full pipeline ────────────────────────────────────────────────
+def build_features(
+    df: pd.DataFrame,
+    encoders: Optional[dict[str, LabelEncoder]] = None,
+    scaler: Optional[StandardScaler] = None,
+) -> tuple[pd.DataFrame, dict[str, LabelEncoder], StandardScaler]:
+    """Run the full feature pipeline: encode → bin → contact → scale.
+
+    Convenience wrapper that calls each step in order.
+
+    Returns
+    -------
+    df : Fully transformed DataFrame (only feature columns retained).
+    encoders : Fitted label encoders.
+    scaler : Fitted standard scaler.
+    """
+    df, encoders = encode_categoricals(df, encoders)
+    df = bin_age(df)
+    df = compute_contact_features(df)
+    df, scaler = scale_numerics(df, scaler)
+
+    # Keep only feature columns in canonical order.
+    feature_cols = get_feature_names()
+    available = [c for c in feature_cols if c in df.columns]
+    df = df[available]
+
+    return df, encoders, scaler

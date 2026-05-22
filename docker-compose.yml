@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  # ── FastAPI serving application: ML propensity + RAG complaints retrieval ──
+  serving-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cip-serving-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./mlruns:/app/mlruns
+      - ./mlflow.db:/app/mlflow.db
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow-server:5000
+    depends_on:
+      - mlflow-server
+    restart: always
+
+  # ── Central MLflow Tracking Server & UI ──
+  mlflow-server:
+    image: python:3.10-slim
+    container_name: cip-mlflow-server
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/app/mlruns
+      - ./mlflow.db:/app/mlflow.db
+    command: >
+      sh -c "pip install mlflow==2.13.0 &&
+             mlflow server \
+             --backend-store-uri sqlite:///app/mlflow.db \
+             --default-artifact-root /app/mlruns \
+             --host 0.0.0.0 \
+             --port 5000"
+    restart: always

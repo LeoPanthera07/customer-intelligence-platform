@@ -1,0 +1,203 @@
+{
+  "total_questions": 10,
+  "passed": 10,
+  "failed": 0,
+  "pass_rate_pct": 100.0,
+  "avg_latency_ms": 88.13,
+  "results": [
+    {
+      "id": "Q01",
+      "question": "billing errors and incorrect charges on my credit card statement",
+      "expected_product": "Credit card or prepaid card",
+      "expected_refused": false,
+      "retrieved_products": [
+        "Credit card or prepaid card"
+      ],
+      "evidence_ids": [
+        7003779,
+        7001112,
+        7000976
+      ],
+      "evidence_sufficiency": "Evidence sufficiency: moderate (avg distance 0.720, 3 complaint(s) retrieved \u2014 IDs: 7003779, 7001112, 7000976).",
+      "refused": false,
+      "latency_ms": 326.54,
+      "pass": true,
+      "fail_reason": null,
+      "notes": "Core credit-card billing dispute \u2014 should retrieve strong matches."
+    },
+    {
+      "id": "Q02",
+      "question": "mortgage loan processing delays and closing cost issues",
+      "expected_product": "Mortgage",
+      "expected_refused": false,
+      "retrieved_products": [
+        "Mortgage"
+      ],
+      "evidence_ids": [
+        7000584,
+        7001316,
+        7001593
+      ],
+      "evidence_sufficiency": "Evidence sufficiency: moderate (avg distance 0.874, 3 complaint(s) retrieved \u2014 IDs: 7000584, 7001316, 7001593).",
+      "refused": false,
+      "latency_ms": 239.34,
+      "pass": true,
+      "fail_reason": null,
+      "notes": "Mortgage origination complaint \u2014 common CFPB category."
+    },
+    {
+      "id": "Q03",
+      "question": "debt collectors harassing me with repeated calls",
+      "expected_product": "Debt collection",
+      "expected_refused": false,
+      "retrieved_products": [
+        "Debt collection"
+      ],
+      "evidence_ids": [
+        7000066,
+        7000551,
+        7000457
+      ],
+      "evidence_sufficiency": "Evidence sufficiency: moderate (avg distance 0.749, 3 complaint(s) retrieved \u2014 IDs: 7000066, 7000551, 7000457).",
+      "refused": false,
+      "latency_ms": 7.39,
+      "pass": true,
+      "fail_reason": null,
+      "notes": "Debt-collection harassment \u2014 FDCPA-related complaints."
+    },
+    {
+      "id": "Q04",
+      "question": "inaccurate information on my credit report from Equifax",
+      "expected_product": "Credit reporting, credit repair services, or other personal consumer reports",
+      "expected_refused": false,
+      "retrieved_products": [
+        "Credit reporting, credit repair services, or other personal consumer reports"
+      ],
+      "evidence_ids": [
+        7003199,
+        7003631,
+        7001192
+      ],
+      "evidence_sufficiency": "Evidence sufficiency: high (avg distance 0.442, 3 complaint(s) retrieved \u2014 IDs: 7003199, 7003631, 7001192).",
+      "refused": false,
+      "latency_ms": 19.72,
+      "pass": true,
+      "fail_reason": null,
+      "notes": "Credit reporting error \u2014 one of the top CFPB complaint categories."
+    },
+    {
+      "id": "Q05",
+      "question": "savings account fees charged without notice and denied refund",
+      "expected_product": "Checking or savings account",
+      "expected_refused": false,
+      "retrieved_products": [
+        "Checking or savings account"
+      ],
+      "evidence_ids": [
+        7004197,
+        7000755,
+        7004460
+      ],
+      "evidence_sufficiency": "Evidence sufficiency: moderate (avg distance 0.819, 3 complaint(s) retrieved \u2014 IDs: 7004197, 7000755, 7004460).",
+      "refused": false,
+      "latency_ms": 7.46,
+      "pass": true,
+      "fail_reason": null,
+      "notes": "Savings account fee dispute \u2014 should retrieve checking/savings complaints."
+    },
+    {
+      "id": "Q06",
+      "question": "student loan servicer providing wrong payoff information",
+      "expected_product": "Student loan",
+      "expected_refused": false,
+      "retrieved_products": [
+        "Student loan"
+      ],
+      "evidence_ids": [
+        7001386,
+        7002009,
+        7003931
+      ],
+      "evidence_sufficiency": "Evidence sufficiency: moderate (avg distance 0.686, 3 complaint(s) retrieved \u2014 IDs: 7001386, 7002009, 7003931).",
+      "refused": false,
+      "latency_ms": 239.03,
+      "pass": true,
+      "fail_reason": null,
+      "notes": "Student loan servicing \u2014 important post-COVID complaint category."
+    },
+    {
+      "id": "Q07",
+      "question": "personal loan payoff process problem and prepayment penalty",
+      "expected_product": "Payday loan, title loan, or personal loan",
+      "expected_refused": false,
+      "retrieved_products": [
+        "Payday loan, title loan, or personal loan"
+      ],
+      "evidence_ids": [
+        7002553,
+        7000506,
+        7003060
+      ],
+      "evidence_sufficiency": "Evidence sufficiency: moderate (avg distance 0.746, 3 complaint(s) retrieved \u2014 IDs: 7002553, 7000506, 7003060).",
+      "refused": false,
+      "latency_ms": 7.24,
+      "pass": true,
+      "fail_reason": null,
+      "notes": "Personal loan payoff \u2014 verify retrieval across loan product types."
+    },
+    {
+      "id": "Q08",
+      "question": "vehicle loan denied and repo without proper notice",
+      "expected_product": "Vehicle loan or lease",
+      "expected_refused": false,
+      "retrieved_products": [
+        "Vehicle loan or lease"
+      ],
+      "evidence_ids": [
+        7004172,
+        7000905,
+        7000497
+      ],
+      "evidence_sufficiency": "Evidence sufficiency: moderate (avg distance 0.757, 3 complaint(s) retrieved \u2014 IDs: 7004172, 7000905, 7000497).",
+      "refused": false,
+      "latency_ms": 7.51,
+      "pass": true,
+      "fail_reason": null,
+      "notes": "Auto loan repossession \u2014 should retrieve vehicle loan complaints."
+    },
+    {
+      "id": "Q09",
+      "question": "money transfer failed and funds not returned by wire service",
+      "expected_product": "Money transfer, virtual currency, or money service",
+      "expected_refused": false,
+      "retrieved_products": [
+        "Money transfer, virtual currency, or money service"
+      ],
+      "evidence_ids": [
+        7004264,
+        7004311,
+        7003177
+      ],
+      "evidence_sufficiency": "Evidence sufficiency: moderate (avg distance 0.865, 3 complaint(s) retrieved \u2014 IDs: 7004264, 7004311, 7003177).",
+      "refused": false,
+      "latency_ms": 6.93,
+      "pass": true,
+      "fail_reason": null,
+      "notes": "Wire/money-transfer failure \u2014 fintech-adjacent complaint type."
+    },
+    {
+      "id": "Q10",
+      "question": "pizza topping preferences and restaurant menu suggestions",
+      "expected_product": null,
+      "expected_refused": true,
+      "retrieved_products": [],
+      "evidence_ids": [],
+      "evidence_sufficiency": "REFUSED \u2014 The closest retrieved complaint has a similarity distance of 1.650, which exceeds the threshold of 1.5. No complaint in the corpus is sufficiently relevant to ground an answer. Please try a more specific financial product or issue keyword.",
+      "refused": true,
+      "latency_ms": 20.11,
+      "pass": true,
+      "fail_reason": null,
+      "notes": "REFUSAL TEST \u2014 completely off-topic; engine must refuse this query."
+    }
+  ]
+}

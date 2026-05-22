@@ -1,0 +1,132 @@
+{
+  "total_queries": 15,
+  "retrieval_hit_count": 12,
+  "empty_retrieval_count": 3,
+  "retrieval_hit_rate": 0.8,
+  "refusal_rate": 0.2,
+  "avg_top_k_distance": 0.8755,
+  "avg_latency_ms": 13.28,
+  "total_approx_tokens": 5113,
+  "per_query_log": [
+    {
+      "query": "credit card billing dispute and incorrect charges",
+      "retrieved": 3,
+      "refused": false,
+      "best_distance": 0.6890805959701538,
+      "latency_ms": 82.85,
+      "approx_tokens": 405
+    },
+    {
+      "query": "mortgage closing cost delay and escrow error",
+      "retrieved": 3,
+      "refused": false,
+      "best_distance": 0.9293631315231323,
+      "latency_ms": 18.95,
+      "approx_tokens": 370
+    },
+    {
+      "query": "debt collector calling too many times per day",
+      "retrieved": 3,
+      "refused": false,
+      "best_distance": 0.8866918683052063,
+      "latency_ms": 7.51,
+      "approx_tokens": 404
+    },
+    {
+      "query": "credit report error not fixed after dispute",
+      "retrieved": 3,
+      "refused": false,
+      "best_distance": 0.47612112760543823,
+      "latency_ms": 6.52,
+      "approx_tokens": 463
+    },
+    {
+      "query": "bank account frozen without explanation",
+      "retrieved": 3,
+      "refused": false,
+      "best_distance": 0.8200074434280396,
+      "latency_ms": 18.62,
+      "approx_tokens": 387
+    },
+    {
+      "query": "student loan income driven repayment calculation wrong",
+      "retrieved": 3,
+      "refused": false,
+      "best_distance": 0.9527400135993958,
+      "latency_ms": 5.31,
+      "approx_tokens": 378
+    },
+    {
+      "query": "auto loan interest rate changed after signing",
+      "retrieved": 3,
+      "refused": false,
+      "best_distance": 1.1464401483535767,
+      "latency_ms": 5.07,
+      "approx_tokens": 381
+    },
+    {
+      "query": "wire transfer lost money not returned",
+      "retrieved": 3,
+      "refused": false,
+      "best_distance": 1.0197880268096924,
+      "latency_ms": 17.4,
+      "approx_tokens": 418
+    },
+    {
+      "query": "personal loan denied and no reason given",
+      "retrieved": 3,
+      "refused": false,
+      "best_distance": 0.862143874168396,
+      "latency_ms": 6.26,
+      "approx_tokens": 428
+    },
+    {
+      "query": "financial services company bad experience",
+      "retrieved": 3,
+      "refused": false,
+      "best_distance": 0.9652204513549805,
+      "latency_ms": 6.72,
+      "approx_tokens": 455
+    },
+    {
+      "query": "bank fee refund request ignored",
+      "retrieved": 3,
+      "refused": false,
+      "best_distance": 0.8337768912315369,
+      "latency_ms": 5.47,
+      "approx_tokens": 393
+    },
+    {
+      "query": "loan payment not applied correctly",
+      "retrieved": 3,
+      "refused": false,
+      "best_distance": 0.92506343126297,
+      "latency_ms": 4.99,
+      "approx_tokens": 417
+    },
+    {
+      "query": "weather forecast for tomorrow morning",
+      "retrieved": 0,
+      "refused": true,
+      "best_distance": 1.627927303314209,
+      "latency_ms": 4.3,
+      "approx_tokens": 71
+    },
+    {
+      "query": "sports team roster and match results",
+      "retrieved": 0,
+      "refused": true,
+      "best_distance": 1.6775447130203247,
+      "latency_ms": 5.07,
+      "approx_tokens": 71
+    },
+    {
+      "query": "recipe for chocolate cake with frosting",
+      "retrieved": 0,
+      "refused": true,
+      "best_distance": 1.7819833755493164,
+      "latency_ms": 4.2,
+      "approx_tokens": 72
+    }
+  ]
+}

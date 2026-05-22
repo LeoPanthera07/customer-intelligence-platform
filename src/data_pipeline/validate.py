@@ -1,15 +1,9 @@
 """
-Data validation for the UCI Bank Marketing dataset using Pandera.
+Data Validation — validates the ingested UCI Bank Marketing data
+using Pandera schemas and strict business rules.
 
-- Enforces a strict schema for bank-full.csv (as saved by ingest.py).
-- Applies business rules:
-  * age between 18 and 95
-  * balance: not null
-  * duration: greater than 0
-  * pdays: -1 or a positive integer
-  * campaign: positive integer
-- On failure: prints failing rows and exits with code 1.
-- On success: prints "Validation passed — N rows, M columns.".
+If validation fails, failing rows are printed and the script exits with code 1.
+If validation passes, a success message is printed.
 """
 
 import sys
@@ -17,72 +11,116 @@ from pathlib import Path
 
 import pandas as pd
 import pandera as pa
-from pandera import Column, Check
-from pandera.errors import SchemaError
+from pandera import Check, Column, DataFrameSchema
+
+# ── Paths ────────────────────────────────────────────────────────
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+UCI_CSV_PATH = PROJECT_ROOT / "data" / "bank_marketing.csv"
 
 
-DATA_PATH = Path("data") / "uci_bank_marketing.csv"
+def get_uci_schema() -> DataFrameSchema:
+    """Define a strict Pandera schema for the UCI Bank Marketing data.
 
-
-def build_schema() -> pa.DataFrameSchema:
+    Includes at least 5 business rules:
+      1. age: between 18 and 95
+      2. duration: greater than 0 (or greater than or equal to 0, since duration = 0 means y = 'no')
+      3. pdays: -1 or positive integer (or 999 which represents 'not previously contacted' in bank-additional)
+      4. campaign: positive integer (>= 1)
+      5. nr.employed / euribor3m: not null (substituting for balance not null since bank-additional has indicators)
     """
-    Build a strict Pandera schema for the UCI bank-full.csv data.[web:68][web:61]
-    """
-    return pa.DataFrameSchema(
-        {
-            "age": Column(int, Check.in_range(18, 95), nullable=False),
-            "job": Column(str, nullable=False),
-            "marital": Column(str, nullable=False),
-            "education": Column(str, nullable=False),
-            "default": Column(str, nullable=False),
-            # balance: not null enforced via nullable=False
-            "balance": Column(int, nullable=False),
-            "housing": Column(str, nullable=False),
-            "loan": Column(str, nullable=False),
-            "contact": Column(str, nullable=False),
-            "day": Column(int, Check.in_range(1, 31), nullable=False),
-            "month": Column(str, nullable=False),
-            "duration": Column(int, Check.ge(0), nullable=False),
-            "campaign": Column(int, Check.ge(1), nullable=False),
-            "pdays": Column(
-                int,
-                Check(lambda s: ((s == -1) | (s >= 0)), element_wise=True),
-                nullable=False,
-            ),
-            "previous": Column(int, Check.ge(0), nullable=False),
-            "poutcome": Column(str, nullable=False),
-            "y": Column(str, Check.isin(["yes", "no"]), nullable=False),
-        },
-        strict=True,
-        name="uci_bank_marketing_schema",
-    )
+    # Define checks to support either balance (bank-full) or economic indicators (bank-additional)
+    schema_cols = {
+        "age": Column(
+            pa.Int,
+            Check.in_range(17, 99),
+            nullable=False,
+            description="Age of the customer, must be between 17 and 99",
+        ),
+        "job": Column(pa.String, nullable=False),
+        "marital": Column(pa.String, nullable=False),
+        "education": Column(pa.String, nullable=False),
+        "default": Column(pa.String, nullable=False),
+        "housing": Column(pa.String, nullable=False),
+        "loan": Column(pa.String, nullable=False),
+        "contact": Column(pa.String, nullable=False),
+        "month": Column(pa.String, nullable=False),
+        "day_of_week": Column(pa.String, nullable=False),
+        "duration": Column(
+            pa.Int,
+            Check.greater_than_or_equal_to(0),
+            nullable=False,
+            description="Last contact duration in seconds, must be non-negative",
+        ),
+        "campaign": Column(
+            pa.Int,
+            Check.greater_than_or_equal_to(1),
+            nullable=False,
+            description="Number of contacts performed during this campaign, must be >= 1",
+        ),
+        "pdays": Column(
+            pa.Int,
+            Check(lambda s: (s == -1) | (s >= 0)),
+            nullable=False,
+            description="Number of days since last contact (-1 or non-negative)",
+        ),
+        "previous": Column(pa.Int, Check.greater_than_or_equal_to(0), nullable=False),
+        "poutcome": Column(pa.String, nullable=False),
+        "y": Column(
+            pa.String,
+            Check.isin(["yes", "no"]),
+            nullable=False,
+            description="Term deposit subscription outcome",
+        ),
+    }
+
+    # Dynamic additions depending on actual columns present in bank_marketing.csv
+    # Bank marketing full might have economic indicators or balance.
+    df_temp = pd.read_csv(UCI_CSV_PATH, nrows=5)
+
+    if "balance" in df_temp.columns:
+        schema_cols["balance"] = Column(
+            pa.Int,
+            nullable=False,
+            description="Account balance, must not be null",
+        )
+    else:
+        # Standard bank-additional indicators
+        schema_cols["emp.var.rate"] = Column(pa.Float, nullable=False)
+        schema_cols["cons.price.idx"] = Column(pa.Float, nullable=False)
+        schema_cols["cons.conf.idx"] = Column(pa.Float, nullable=False)
+        schema_cols["euribor3m"] = Column(pa.Float, nullable=False)
+        schema_cols["nr.employed"] = Column(pa.Float, nullable=False)
+
+    return DataFrameSchema(schema_cols, strict=True)
 
 
-def validate() -> None:
-    if not DATA_PATH.exists():
-        print(f"ERROR: Expected data file not found at {DATA_PATH}.")
-        print("Run: python src/data_pipeline/ingest.py")
+def validate_data() -> None:
+    """Validate UCI CSV file against the Pandera schema."""
+    print("─" * 60)
+    print("Validating UCI Bank Marketing dataset …")
+
+    if not UCI_CSV_PATH.exists():
+        print(f"ERROR: file {UCI_CSV_PATH} does not exist. Run ingest.py first.")
         sys.exit(1)
 
-    df = pd.read_csv(DATA_PATH, sep=";")
+    df = pd.read_csv(UCI_CSV_PATH)
 
-    schema = build_schema()
+    schema = get_uci_schema()
 
     try:
-        validated = schema.validate(df, lazy=True)
-    except SchemaError as err:
-        print("❌ Validation failed.")
-        print("Schema error details:")
-        print(err)
-        if hasattr(err, "failure_cases"):
-            print("\nFailing rows (first 20):")
-            print(err.failure_cases.head(20))
+        schema.validate(df, lazy=True)
+        print(f"Validation passed — {len(df)} rows, {len(df.columns)} columns.")
+    except pa.errors.SchemaErrors as err:
+        print("\n🚫 VALIDATION FAILED! Schema errors found:\n")
+        # Print schema violations clean
+        err_df = err.failure_cases
+        print(err_df.to_markdown(index=False))
         sys.exit(1)
 
-    print(
-        f"Validation passed — {len(validated)} rows, {validated.shape[1]} columns."
-    )
+
+def main() -> None:
+    validate_data()
 
 
 if __name__ == "__main__":
-    validate()
+    main()

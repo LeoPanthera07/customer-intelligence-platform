@@ -1,15 +1,23 @@
-# Data directory
+# Data Directory
 
-This folder stores local data files that are **not** committed to Git.
+**⚠️ No raw data is committed to this repository.**
 
-Datasets used:
+All data files are downloaded at runtime by `src/data_pipeline/ingest.py`.
 
-- UCI Bank Marketing dataset  
-  - Source: https://archive.ics.uci.edu/ml/datasets/bank+marketing
-  - Usage: Campaign conversion prediction (term-deposit subscription `y`)
+## Data Sources
 
-- CFPB Consumer Complaint Database (sample only)  
-  - Source: https://www.consumerfinance.gov/data-research/consumer-complaints/
-  - Usage: Complaint intelligence and RAG over complaint narratives
+| Dataset | Source | URL |
+|---------|--------|-----|
+| UCI Bank Marketing | UCI Machine Learning Repository | https://archive.ics.uci.edu/ml/datasets/Bank+Marketing |
+| CFPB Consumer Complaints | Consumer Financial Protection Bureau | https://www.consumerfinance.gov/data-research/consumer-complaints/ |
 
-Per project rules, only small samples and hash sidecar files are stored here; full raw data should never be committed.
+## Files Generated After Ingestion
+
+| File | Description |
+|------|-------------|
+| `bank_marketing.csv` | UCI Bank Marketing dataset (full) |
+| `cfpb_complaints.csv` | CFPB complaint sample (5,000–10,000 records) |
+| `uci_hash.txt` | SHA-256 hash of `bank_marketing.csv` for versioning |
+| `cfpb_hash.txt` | SHA-256 hash of `cfpb_complaints.csv` for versioning |
+| `faiss.index` | FAISS vector index built from complaint narratives |
+| `chunk_map.json` | Mapping of chunk IDs to metadata and text |

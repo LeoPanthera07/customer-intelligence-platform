@@ -1,34 +1,45 @@
-# Core web and API stack
+# ──────────────────────────────────────────
+# Customer Intelligence Platform — Pinned Dependencies
+# ──────────────────────────────────────────
+
+# Web framework
 fastapi==0.111.0
 uvicorn[standard]==0.29.0
 
-# ML and modelling
-scikit-learn==1.4.0
-xgboost==2.0.0
-numpy>=1.26.0
-pandas>=2.2.0
-
-# Tracking and experiment management
+# ML experiment tracking
 mlflow==2.13.0
 
-# RAG and embeddings
+# ML modelling
+scikit-learn==1.4.2
+xgboost==2.0.3
+
+# RAG — embeddings + vector store
 sentence-transformers==2.7.0
-faiss-cpu==1.13.2
+faiss-cpu==1.8.0
 
 # Data validation
-pandera==0.19.0
+pandera==0.19.3
 
-# Monitoring and drift
-evidently==0.4.0
+# Data manipulation
+pandas>=2.0,<3.0
+numpy>=1.24,<2.0
 
-# API schemas and validation
-pydantic==1.10.2
+# Monitoring / drift detection
+evidently==0.4.33
+
+# HTTP requests (data ingestion)
+requests>=2.31,<3.0
+
+# Schema validation (ships with FastAPI but pinned for clarity)
+pydantic>=2.0,<3.0
 
 # Testing
-pytest==8.0.0
-pytest-asyncio>=0.23.0
+pytest==8.2.2
+httpx>=0.27,<1.0
 
 # Utilities
-python-dotenv>=1.0.0
-requests>=2.31.0
-orjson>=3.10.0
+python-dotenv>=1.0,<2.0
+joblib>=1.3,<2.0
+
+# Plotting (for feature importance charts, calibration curves)
+matplotlib>=3.8,<4.0

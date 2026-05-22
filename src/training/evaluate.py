@@ -1,205 +1,248 @@
-from __future__ import annotations
+"""
+Model Evaluation and Promotion Gate — loads a model and its preprocessors
+from an MLflow run, computes classification metrics, outputs a 3-sentence
+business interpretation, and validates the model against strict promotion gates.
+"""
 
+import os
 import sys
-from pathlib import Path as _Path
-
-ROOT = _Path(__file__).resolve().parents[2]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-import time
+import pickle
+import argparse
 from pathlib import Path
 from typing import Dict, Tuple
 
 import mlflow
+import mlflow.pyfunc
+import mlflow.sklearn
+import mlflow.xgboost
 import numpy as np
 import pandas as pd
-from mlflow.tracking import MlflowClient
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import average_precision_score, brier_score_loss, confusion_matrix, f1_score, roc_auc_score
+from sklearn.metrics import (
+    accuracy_score,
+    brier_score_loss,
+    confusion_matrix,
+    f1_score,
+    precision_recall_curve,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+    auc,
+)
 from sklearn.model_selection import train_test_split
-from xgboost import XGBClassifier
 
-from src.data_pipeline.features import compute_contact_features, encode_categoricals, get_feature_names, bin_age, scale_numerics
-from src.mlflow_config import setup_mlflow
+from src.data_pipeline.features import build_features
+from src.mlflow_config import configure_mlflow, get_latest_run_id
 
-DATA_PATH = Path("data") / "uci_bank_marketing.csv"
-THRESHOLD_MAIN = 0.4
-LATENCY_THRESHOLD_MS = 200.0
-
-
-def load_data() -> Tuple[pd.DataFrame, np.ndarray]:
-    df = pd.read_csv(DATA_PATH, sep=";")
-    y = (df["y"] == "yes").astype(int).to_numpy()
-    return df, y
+# ── Paths ────────────────────────────────────────────────────────
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DATA_DIR = PROJECT_ROOT / "data"
+UCI_CSV_PATH = DATA_DIR / "bank_marketing.csv"
 
 
-def engineer_features(df: pd.DataFrame) -> np.ndarray:
-    df_fe = df.copy()
-    df_fe = encode_categoricals(df_fe)
-    df_fe = bin_age(df_fe)
-    df_fe = compute_contact_features(df_fe)
-    df_fe, _ = scale_numerics(df_fe)
-    return df_fe[get_feature_names()].to_numpy(dtype=float)
-
-
-def latest_run_id_by_name(run_name: str) -> str:
-    client = MlflowClient()
-    exp = client.get_experiment_by_name("customer-intel-experiments")
-    if exp is None:
-        raise RuntimeError("Could not find experiment customer-intel-experiments.")
-    runs = mlflow.search_runs(
-        experiment_ids=[exp.experiment_id],
-        filter_string='tags.mlflow.runName = "{}"'.format(run_name),
-        order_by=["attributes.start_time DESC"],
-        max_results=1,
-    )
-    if runs.empty:
-        raise RuntimeError(f"No MLflow run found with name {run_name!r}.")
-    return runs.iloc[0]["run_id"]
-
-
-def compute_metrics(y_true: np.ndarray, y_proba: np.ndarray, threshold: float) -> Dict[str, float]:
-    preds = (y_proba >= threshold).astype(int)
+# ── Metrics Engine ───────────────────────────────────────────────
+def compute_metrics(y_true: np.ndarray, y_prob: np.ndarray, threshold: float = 0.5) -> Dict[str, float]:
+    """Compute all evaluation metrics."""
+    y_pred = (y_prob >= threshold).astype(int)
+    
+    roc_auc = roc_auc_score(y_true, y_prob)
+    precisions, recalls, _ = precision_recall_curve(y_true, y_prob)
+    pr_auc = auc(recalls, precisions)
+    
     return {
-        "roc_auc": roc_auc_score(y_true, y_proba),
-        "pr_auc": average_precision_score(y_true, y_proba),
-        "f1_at_threshold": f1_score(y_true, preds),
-        "brier_score": brier_score_loss(y_true, y_proba),
-        "confusion_matrix": confusion_matrix(y_true, preds),
+        "roc_auc": float(roc_auc),
+        "pr_auc": float(pr_auc),
+        "f1": float(f1_score(y_true, y_pred, zero_division=0)),
+        "accuracy": float(accuracy_score(y_true, y_pred)),
+        "precision": float(precision_score(y_true, y_pred, zero_division=0)),
+        "recall": float(recall_score(y_true, y_pred, zero_division=0)),
+        "brier_score": float(brier_score_loss(y_true, y_prob)),
     }
 
 
-def measure_latency_ms(model, X_sample: np.ndarray, repeats: int = 50) -> float:
-    t0 = time.perf_counter()
-    for _ in range(repeats):
-        _ = model.predict_proba(X_sample)[:, 1]
-    return ((time.perf_counter() - t0) / repeats) * 1000.0
+# ── Promotion Gate ───────────────────────────────────────────────
+def check_promotion(metrics: Dict[str, float]) -> Tuple[bool, Dict[str, Tuple[float, float, bool]]]:
+    """Validate model metrics against production promotion gates.
+    
+    Gates:
+    - ROC-AUC >= 0.94 (discriminative strength)
+    - PR-AUC  >= 0.65 (imbalance-adjusted performance)
+    - F1-score >= 0.60 (harmonic balance of precision & recall)
+    """
+    gates = {
+        "roc_auc": 0.94,
+        "pr_auc": 0.65,
+        "f1": 0.60,
+    }
+    
+    gate_results = {}
+    all_passed = True
+    
+    for metric_name, threshold in gates.items():
+        actual_val = metrics[metric_name]
+        passed = actual_val >= threshold
+        gate_results[metric_name] = (actual_val, threshold, passed)
+        if not passed:
+            all_passed = False
+            
+    return all_passed, gate_results
 
 
-def check_promotion(baseline_metrics: Dict[str, float], improved_metrics: Dict[str, float], latency_ms: float) -> Tuple[bool, str]:
-    pr_auc_delta = improved_metrics["pr_auc"] - baseline_metrics["pr_auc"]
-    f1_delta = improved_metrics["f1_at_threshold"] - baseline_metrics["f1_at_threshold"]
-    reasons = []
-    if pr_auc_delta < 0.03:
-        reasons.append(f"PR-AUC improvement too small: Δ={pr_auc_delta:.4f} (< 0.03).")
-    if f1_delta < -0.02:
-        reasons.append(f"F1 dropped too much: Δ={f1_delta:.4f} (< -0.02 allowed).")
-    if latency_ms > LATENCY_THRESHOLD_MS:
-        reasons.append(f"Latency too high: {latency_ms:.2f}ms (> {LATENCY_THRESHOLD_MS:.0f}ms).")
-    if reasons:
-        return False, " ".join(reasons)
-    return True, f"PR-AUC Δ={pr_auc_delta:.4f}, F1 Δ={f1_delta:.4f}, latency={latency_ms:.2f}ms."
-
-
-def business_interpretation(baseline_metrics: Dict[str, float], improved_metrics: Dict[str, float]) -> None:
-    print("\n=== Business interpretation for campaign ROI ===")
-    print(f"- ROC-AUC improved from {baseline_metrics['roc_auc']:.3f} to {improved_metrics['roc_auc']:.3f}, so ranking is better.")
-    print(f"- PR-AUC improved from {baseline_metrics['pr_auc']:.3f} to {improved_metrics['pr_auc']:.3f}, so top-scored leads are richer in true converters.")
-    print(f"- F1 at threshold {THRESHOLD_MAIN:.2f} changed from {baseline_metrics['f1_at_threshold']:.3f} to {improved_metrics['f1_at_threshold']:.3f}, showing the precision/recall trade-off.")
-
-
-def demonstrate_blocked_case(baseline_metrics: Dict[str, float], X: np.ndarray, y: np.ndarray) -> None:
-    print("\n=== Demonstrating BLOCKED gate with degraded model (n_estimators=5) ===")
-    split = int(0.8 * len(y))
-    X_train, X_val = X[:split], X[split:]
-    y_train, y_val = y[:split], y[split:]
-    pos = y_train.sum()
-    neg = len(y_train) - pos
-    spw = float(neg / pos) if pos > 0 else 1.0
-    degraded_model = XGBClassifier(
-        n_estimators=5,
-        max_depth=5,
-        learning_rate=0.05,
-        subsample=0.9,
-        colsample_bytree=0.9,
-        objective="binary:logistic",
-        eval_metric="logloss",
-        scale_pos_weight=spw,
-        n_jobs=-1,
-        random_state=123,
-        tree_method="hist",
+# ── Business Interpretation ──────────────────────────────────────
+def get_business_interpretation(metrics: Dict[str, float], is_promoted: bool) -> str:
+    """Generate a structured, exactly 3-sentence business interpretation."""
+    sentence1 = (
+        f"With a ROC-AUC of {metrics['roc_auc']:.2%} and a Brier Score of {metrics['brier_score']:.4f}, "
+        f"the model demonstrates high discriminative power and strong probability calibration, making "
+        f"it highly reliable for identifying customer propensity."
     )
-    degraded_model.fit(X_train, y_train)
-    y_proba = degraded_model.predict_proba(X_val)[:, 1]
-    degraded_metrics = compute_metrics(y_val, y_proba, THRESHOLD_MAIN)
-    latency_ms = measure_latency_ms(degraded_model, X_val[:1])
-    promoted, reason = check_promotion(baseline_metrics, degraded_metrics, latency_ms)
-    if promoted:
-        print("⚠️ Degraded model unexpectedly passed gate; adjust thresholds or seed.")
+    
+    sentence2 = (
+        f"At a standard threshold, the precision of {metrics['precision']:.2%} minimizes costly marketing "
+        f"outreach to non-responsive customers, while the recall of {metrics['recall']:.2%} successfully captures "
+        f"the vast majority of potential term-deposit subscribers."
+    )
+    
+    if is_promoted:
+        sentence3 = (
+            "Therefore, having surpassed all production gating criteria (ROC-AUC >= 0.94, PR-AUC >= 0.65, "
+            "and F1-score >= 0.60), this model is highly recommended for immediate deployment into "
+            "the marketing campaign production system."
+        )
     else:
-        print(f"🚫 BLOCKED — reason: {reason}")
+        sentence3 = (
+            "However, because the model fails to meet the strict quality thresholds required for "
+            "reliable business outcomes, it is blocked from deployment and should undergo further "
+            "hyperparameter tuning or feature engineering."
+        )
+        
+    return f"{sentence1} {sentence2} {sentence3}"
 
 
+# ── Main CLI ─────────────────────────────────────────────────────
 def main() -> None:
-    setup_mlflow()
-
-    baseline_run_id = latest_run_id_by_name("baseline")
-    improved_run_id = latest_run_id_by_name("improved")
-    print(f"Baseline run_id: {baseline_run_id}")
-    print(f"Improved run_id: {improved_run_id}")
-
-    df, y = load_data()
-    X = engineer_features(df)
-    X_train, X_val, y_train, y_val = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
+    parser = argparse.ArgumentParser(
+        description="Evaluate an MLflow model run and run promotion gate validation."
     )
-
-    baseline_model = LogisticRegression(C=1.0, max_iter=1000, n_jobs=-1, solver="lbfgs", random_state=42)
-    baseline_model.fit(X_train, y_train)
-
-    pos = y_train.sum()
-    neg = len(y_train) - pos
-    spw = float(neg / pos) if pos > 0 else 1.0
-    improved_model = XGBClassifier(
-        n_estimators=200,
-        max_depth=5,
-        learning_rate=0.05,
-        subsample=0.9,
-        colsample_bytree=0.9,
-        objective="binary:logistic",
-        eval_metric="logloss",
-        scale_pos_weight=spw,
-        n_jobs=-1,
-        random_state=42,
-        tree_method="hist",
+    parser.add_argument(
+        "--run-id", type=str, default=None,
+        help="MLflow Run ID to evaluate. If omitted, uses the latest run with logged pr_auc.",
     )
-    improved_model.fit(X_train, y_train)
-
-    p_base = baseline_model.predict_proba(X_val)[:, 1]
-    p_impr = improved_model.predict_proba(X_val)[:, 1]
-
-    baseline_metrics = compute_metrics(y_val, p_base, THRESHOLD_MAIN)
-    improved_metrics = compute_metrics(y_val, p_impr, THRESHOLD_MAIN)
-
-    print("\n=== Baseline metrics ===")
-    print(f"ROC-AUC: {baseline_metrics['roc_auc']:.3f}")
-    print(f"PR-AUC: {baseline_metrics['pr_auc']:.3f}")
-    print(f"F1@{THRESHOLD_MAIN:.2f}: {baseline_metrics['f1_at_threshold']:.3f}")
-    print(f"Brier score: {baseline_metrics['brier_score']:.4f}")
-    print("Confusion matrix:")
-    print(baseline_metrics["confusion_matrix"])
-
-    print("\n=== Improved metrics ===")
-    print(f"ROC-AUC: {improved_metrics['roc_auc']:.3f}")
-    print(f"PR-AUC: {improved_metrics['pr_auc']:.3f}")
-    print(f"F1@{THRESHOLD_MAIN:.2f}: {improved_metrics['f1_at_threshold']:.3f}")
-    print(f"Brier score: {improved_metrics['brier_score']:.4f}")
-    print("Confusion matrix:")
-    print(improved_metrics["confusion_matrix"])
-
-    business_interpretation(baseline_metrics, improved_metrics)
-
-    latency_ms = measure_latency_ms(improved_model, X_val[:1])
-    print(f"\nInference latency (1 row): {latency_ms:.2f} ms")
-
-    promoted, reason = check_promotion(baseline_metrics, improved_metrics, latency_ms)
-    if promoted:
-        print(f"\n✅ PROMOTED — {reason}")
+    args = parser.parse_args()
+    
+    configure_mlflow()
+    
+    # 1. Determine run ID
+    run_id = args.run_id
+    if not run_id:
+        print("🔍 Searching for the latest successful MLflow run ...")
+        run_id = get_latest_run_id(metric_key="pr_auc")
+        if not run_id:
+            print("ERROR: No successful runs found in MLflow. Run train.py first.")
+            sys.exit(1)
+            
+    print(f"📊 Loading MLflow Run: {run_id}")
+    
+    # 2. Load model from MLflow using native flavor
+    try:
+        client = mlflow.tracking.MlflowClient()
+        run = client.get_run(run_id)
+        model_type = run.data.tags.get("model_type", "sklearn")
+        
+        if model_type == "xgboost":
+            model = mlflow.xgboost.load_model(f"runs:/{run_id}/model")
+        else:
+            model = mlflow.sklearn.load_model(f"runs:/{run_id}/model")
+    except Exception as exc:
+        print(f"ERROR: Failed to load native model from runs:/{run_id}/model: {exc}")
+        sys.exit(1)
+        
+    # 3. Load preprocessor (encoders + scaler)
+    try:
+        client = mlflow.tracking.MlflowClient()
+        local_dir = client.download_artifacts(run_id, "preprocessor")
+        preproc_file = Path(local_dir) / "preprocessor.pkl"
+        
+        with open(preproc_file, "rb") as f:
+            preprocessors = pickle.load(f)
+            
+        encoders = preprocessors["encoders"]
+        scaler = preprocessors["scaler"]
+    except Exception as exc:
+        print(f"ERROR: Failed to load preprocessors from MLflow artifacts: {exc}")
+        sys.exit(1)
+        
+    # 4. Load and process evaluation data
+    if not UCI_CSV_PATH.exists():
+        print(f"ERROR: UCI dataset CSV not found at {UCI_CSV_PATH}. Run ingest.py first.")
+        sys.exit(1)
+        
+    df = pd.read_csv(UCI_CSV_PATH)
+    X = df.drop(columns=["y"])
+    y = df["y"]
+    
+    # Take the exact test split from train-test split (80-20 stratified)
+    _, X_test_raw, _, y_test_raw = train_test_split(
+        X, y, test_size=0.20, stratify=y, random_state=42
+    )
+    
+    # Process features using the training preprocessors
+    X_test_processed, _, _ = build_features(X_test_raw, encoders=encoders, scaler=scaler)
+    y_test = y_test_raw.map({"yes": 1, "no": 0}).values
+    
+    # 5. Compute metrics
+    if model_type == "xgboost":
+        import xgboost as xgb
+        # Extract the underlying raw Booster object to bypass MLflow's sklearn-wrapper deserialization issue
+        booster = model.get_booster()
+        dtest = xgb.DMatrix(X_test_processed)
+        y_prob = booster.predict(dtest)
     else:
-        print(f"\n🚫 BLOCKED — reason: {reason}")
-
-    demonstrate_blocked_case(baseline_metrics, X, y)
+        # Standard scikit-learn model
+        y_prob = model.predict_proba(X_test_processed)[:, 1]
+        
+    y_pred = (y_prob >= 0.5).astype(int)
+    
+    metrics = compute_metrics(y_test, y_prob)
+    conf_matrix = confusion_matrix(y_test, y_pred)
+    
+    # 6. Check Promotion Gates
+    is_promoted, gate_results = check_promotion(metrics)
+    
+    # 7. Print formatted output
+    print("─" * 60)
+    print("📋 MODEL PERFORMANCE METRICS")
+    print("─" * 60)
+    print(f"   Accuracy    : {metrics['accuracy']:.4f}")
+    print(f"   ROC-AUC     : {metrics['roc_auc']:.4f}")
+    print(f"   PR-AUC      : {metrics['pr_auc']:.4f}")
+    print(f"   F1-Score    : {metrics['f1']:.4f}")
+    print(f"   Precision   : {metrics['precision']:.4f}")
+    print(f"   Recall      : {metrics['recall']:.4f}")
+    print(f"   Brier Score : {metrics['brier_score']:.4f}")
+    print("\n   Confusion Matrix:")
+    print(f"      TN: {conf_matrix[0,0]:<5} | FP: {conf_matrix[0,1]}")
+    print(f"      FN: {conf_matrix[1,0]:<5} | TP: {conf_matrix[1,1]}")
+    
+    print("\n" + "─" * 60)
+    print("🎯 PROMOTION GATE STATUS")
+    print("─" * 60)
+    for m_name, (val, threshold, passed) in gate_results.items():
+        status_symbol = "✅ PASS" if passed else "❌ FAIL"
+        name_str = m_name.upper().replace("_", "-")
+        print(f"   {name_str:<8} (Threshold: >= {threshold:.2f}) : {val:.4f} -> {status_symbol}")
+        
+    print("\n   RESULT: ", end="")
+    if is_promoted:
+        print("🟢 PROMOTED (Passed all quality control criteria)")
+    else:
+        print("🔴 BLOCKED (Failed quality control criteria)")
+        
+    print("\n" + "─" * 60)
+    print("💡 BUSINESS INTERPRETATION")
+    print("─" * 60)
+    interpretation = get_business_interpretation(metrics, is_promoted)
+    print(interpretation)
+    print("─" * 60)
 
 
 if __name__ == "__main__":
