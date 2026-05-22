@@ -1,8 +1,8 @@
 """
 Data ingestion for the Customer Intelligence Platform.
 
-- Downloads the UCI Bank Marketing dataset (bank-full.csv).
-- Downloads a CFPB Consumer Complaint sample via the public API.
+- Downloads the UCI Bank Marketing dataset (bank-full.csv) from the classic UCI bank.zip.
+- Downloads a CFPB Consumer Complaint sample via the public API (or generates a synthetic sample if the API fails).
 - Saves them to data/ with SHA-256 hash sidecar files:
   - data/uci_bank_marketing.csv + data/uci_hash.txt
   - data/cfpb_complaints_sample.csv + data/cfpb_hash.txt
@@ -20,17 +20,12 @@ import pandas as pd
 import requests
 
 
-# UCI: Bank Marketing dataset (older bank-full.csv that includes "balance")
-# Reference: UCI ML Repository Bank Marketing dataset.[web:68]
-UCI_BANK_URL = (
-    "https://archive.ics.uci.edu/ml/machine-learning-databases/00222/bank-full.csv"
-)
+# Classic UCI URL that contains bank-full.csv inside bank.zip.[web:85][web:96]
+UCI_BANK_URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/00222/bank.zip"
+UCI_BANK_CSV_IN_ZIP = "bank-full.csv"
 
-# CFPB: Consumer Complaint Database sample via public search API.
-# We request CSV with a configurable size parameter.[web:60][web:69]
-CFPB_BASE_URL = (
-    "https://www.consumerfinance.gov/data-research/consumer-complaints/search/api/v1/"
-)
+# CFPB complaint database search API endpoint.[web:60]
+CFPB_API_URL = "https://www.consumerfinance.gov/data-research/consumer-complaints/search/api/v1/"
 
 
 def _ensure_data_dir() -> Path:
@@ -48,14 +43,8 @@ def _sha256_file(path: Path) -> str:
 
 
 def _download_to_path(url: str, dest: Path, **request_kwargs) -> Tuple[float, int]:
-    """
-    Stream a file from `url` to `dest`.
-
-    Returns:
-        elapsed_seconds, content_length_bytes (if known, else -1)
-    """
     t0 = time.perf_counter()
-    with requests.get(url, stream=True, timeout=60, **request_kwargs) as r:
+    with requests.get(url, stream=True, timeout=120, **request_kwargs) as r:
         r.raise_for_status()
         total = 0
         with dest.open("wb") as f:
@@ -69,11 +58,18 @@ def _download_to_path(url: str, dest: Path, **request_kwargs) -> Tuple[float, in
 
 
 def ingest_uci_bank(data_dir: Path) -> None:
-    csv_path = data_dir / "uci_bank_marketing.csv"
-    print(f"Downloading UCI Bank Marketing data from: {UCI_BANK_URL}")
-    elapsed, size_bytes = _download_to_path(UCI_BANK_URL, csv_path)
+    import zipfile
 
-    # UCI bank-full.csv uses ";" as separator
+    zip_path = data_dir / "uci_bank_marketing.zip"
+    csv_path = data_dir / "uci_bank_marketing.csv"
+
+    print(f"Downloading UCI Bank Marketing ZIP from: {UCI_BANK_URL}")
+    elapsed, size_bytes = _download_to_path(UCI_BANK_URL, zip_path)
+
+    with zipfile.ZipFile(zip_path) as zf:
+        with zf.open(UCI_BANK_CSV_IN_ZIP) as src, csv_path.open("wb") as dst:
+            dst.write(src.read())
+
     df = pd.read_csv(csv_path, sep=";")
     sha = _sha256_file(csv_path)
     (data_dir / "uci_hash.txt").write_text(sha + os.linesep, encoding="utf-8")
@@ -84,24 +80,42 @@ def ingest_uci_bank(data_dir: Path) -> None:
     )
 
 
+def _synthetic_cfpb_sample(sample_size: int) -> pd.DataFrame:
+    products = ["Credit card", "Mortgage", "Checking account", "Student loan", "Debt collection"]
+    issues = ["Billing dispute", "Charged fees", "Loan modification", "Incorrect information", "Fraud or scam"]
+    companies = ["Bank A", "Bank B", "Bank C", "Lender X", "Servicer Y"]
+
+    rows = []
+    for i in range(sample_size):
+        rows.append(
+            {
+                "complaint_id": 9000000 + i,
+                "product": products[i % len(products)],
+                "company": companies[i % len(companies)],
+                "date_received": f"2025-01-{(i % 28) + 1:02d}",
+                "issue": issues[i % len(issues)],
+                "consumer_complaint_narrative": (
+                    f"Sample complaint narrative {i} about {products[i % len(products)]} "
+                    f"and {issues[i % len(issues)]} involving {companies[i % len(companies)]}."
+                ),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
 def ingest_cfpb_sample(data_dir: Path, sample_size: int) -> None:
-    """
-    Download a CFPB complaint sample as CSV using the public search API.
-
-    Note: The API supports a size parameter for limiting results.[web:69]
-    """
-    params = {
-        "size": sample_size,
-        "format": "csv",
-    }
+    params = {"size": sample_size, "format": "csv"}
     csv_path = data_dir / "cfpb_complaints_sample.csv"
-    print(
-        f"Downloading CFPB complaint sample from: {CFPB_BASE_URL} "
-        f"(size={sample_size})"
-    )
-    elapsed, size_bytes = _download_to_path(CFPB_BASE_URL, csv_path, params=params)
+    print(f"Downloading CFPB complaint sample from: {CFPB_API_URL} (size={sample_size})")
+    try:
+        elapsed, size_bytes = _download_to_path(CFPB_API_URL, csv_path, params=params)
+        df = pd.read_csv(csv_path)
+    except Exception as e:
+        print(f"WARNING: CFPB API download failed ({e}); generating synthetic sample for demo.")
+        df = _synthetic_cfpb_sample(sample_size)
+        df.to_csv(csv_path, index=False)
+        elapsed, size_bytes = 0.0, csv_path.stat().st_size
 
-    df = pd.read_csv(csv_path)
     sha = _sha256_file(csv_path)
     (data_dir / "cfpb_hash.txt").write_text(sha + os.linesep, encoding="utf-8")
 
@@ -112,39 +126,16 @@ def ingest_cfpb_sample(data_dir: Path, sample_size: int) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description=(
-            "Ingest UCI Bank Marketing and CFPB complaint datasets into ./data "
-            "with SHA-256 hash sidecars."
-        )
-    )
-    parser.add_argument(
-        "--uci-url",
-        type=str,
-        default=UCI_BANK_URL,
-        help=f"Override URL for UCI bank marketing CSV (default: {UCI_BANK_URL})",
-    )
-    parser.add_argument(
-        "--cfpb-size",
-        "--sample",
-        dest="cfpb_size",
-        type=int,
-        default=5000,
-        help="Number of CFPB complaint rows to request via API (default: 5000).",
-    )
+    parser = argparse.ArgumentParser(description="Ingest UCI and CFPB datasets into ./data.")
+    parser.add_argument("--sample", type=int, default=5000, help="CFPB sample size (default 5000).")
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
     data_dir = _ensure_data_dir()
-
-    # Allow overriding UCI URL via CLI while keeping default constant
-    global UCI_BANK_URL
-    UCI_BANK_URL = args.uci_url
-
     ingest_uci_bank(data_dir)
-    ingest_cfpb_sample(data_dir, args.cfpb_size)
+    ingest_cfpb_sample(data_dir, args.sample)
 
 
 if __name__ == "__main__":
